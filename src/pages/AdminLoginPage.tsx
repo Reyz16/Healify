@@ -8,12 +8,10 @@ import {
   LogIn,
   AlertCircle,
   HelpCircle,
-  KeyRound,
-  CheckCircle2,
 } from 'lucide-react';
 import { FormField } from '../components/FormField';
 import { useToast } from '../components/Toast';
-import { loginAdmin, loginWithGoogle, DEMO_ADMIN, type AuthUser } from '../lib/supabase';
+import { loginAdmin, loginWithGoogle, type AuthUser } from '../lib/supabase';
 
 interface AdminLoginPageProps {
   navigate: (route: string) => void;
@@ -81,13 +79,6 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const fillDemoCredentials = () => {
-    setEmail(DEMO_ADMIN.email);
-    setPassword(DEMO_ADMIN.password);
-    setErrorMessage(null);
-    showToast('Kredensial Admin Demo telah diisikan!', 'info');
   };
 
   return (
@@ -209,61 +200,6 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
               )}
             </button>
           </form>
-
-          {/* Demo Account Helper for Reviewer / Test */}
-          <div className="pt-4 border-t border-slate-100 space-y-2">
-            <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-3">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-amber-900 flex items-center gap-1.5">
-                  <KeyRound className="w-3.5 h-3.5 text-amber-700" />
-                  Pilihan Akun Login (Siap Pakai):
-                </span>
-              </div>
-
-              {/* Option 1: User Email */}
-              <div className="flex items-center justify-between gap-2 p-2 bg-white rounded-xl border border-amber-200/80">
-                <div className="text-[11px] font-mono text-slate-800 truncate">
-                  reyhanz895@gmail.com
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmail('reyhanz895@gmail.com');
-                    setPassword(DEMO_ADMIN.password);
-                    setErrorMessage(null);
-                    showToast('Email reyhanz895@gmail.com dipilih!', 'info');
-                  }}
-                  className="font-bold text-[11px] text-[#003B73] hover:underline bg-sky-50 px-2 py-1 rounded border border-sky-200 shrink-0"
-                >
-                  Gunakan Akun
-                </button>
-              </div>
-
-              {/* Option 2: Binus Student / Staff Email */}
-              <div className="flex items-center justify-between gap-2 p-2 bg-white rounded-xl border border-amber-200/80">
-                <div className="text-[11px] font-mono text-slate-800 truncate">
-                  muhammad.laksono002@binus.ac.id
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmail('muhammad.laksono002@binus.ac.id');
-                    setPassword(DEMO_ADMIN.password);
-                    setErrorMessage(null);
-                    showToast('Email muhammad.laksono002@binus.ac.id dipilih!', 'info');
-                  }}
-                  className="font-bold text-[11px] text-[#003B73] hover:underline bg-sky-50 px-2 py-1 rounded border border-sky-200 shrink-0"
-                >
-                  Gunakan Akun
-                </button>
-              </div>
-
-              <div className="text-[11px] text-slate-600 pt-1 flex items-center justify-between border-t border-amber-100">
-                <span>Password Bawaan:</span>
-                <span className="font-mono font-bold text-slate-900">{DEMO_ADMIN.password}</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
