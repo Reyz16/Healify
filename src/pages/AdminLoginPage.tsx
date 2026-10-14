@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { FormField } from '../components/FormField';
 import { useToast } from '../components/Toast';
-import { loginAdmin, DEMO_ADMIN, type AuthUser } from '../lib/supabase';
+import { loginAdmin, loginWithGoogle, DEMO_ADMIN, type AuthUser } from '../lib/supabase';
 
 interface AdminLoginPageProps {
   navigate: (route: string) => void;
@@ -32,6 +32,9 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const [customGoogleEmail, setCustomGoogleEmail] = useState('');
+  const [showCustomGoogleInput, setShowCustomGoogleInput] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,6 +52,27 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
         setErrorMessage(res.error || 'Autentikasi gagal.');
       } else {
         showToast(`Selamat datang, ${res.user.name}!`, 'success');
+        onLoginSuccess(res.user);
+        navigate('/admin/dashboard');
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Terjadi kesalahan sistem.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async (selectedEmail: string) => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    setShowGoogleModal(false);
+
+    try {
+      const res = await loginWithGoogle(selectedEmail);
+      if (res.error || !res.user) {
+        setErrorMessage(res.error || 'Login Google gagal.');
+      } else {
+        showToast(`Berhasil masuk dengan Google: ${res.user.email}!`, 'success');
         onLoginSuccess(res.user);
         navigate('/admin/dashboard');
       }
@@ -83,7 +107,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
         </div>
 
         {/* Form Body */}
-        <div className="p-8 space-y-6">
+        <div className="p-8 space-y-5">
           {errorMessage && (
             <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2.5 animate-in fade-in">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
@@ -91,7 +115,31 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Google Sign In Button */}
+          <button
+            type="button"
+            onClick={() => setShowGoogleModal(true)}
+            className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 font-semibold text-slate-800 text-sm shadow-xs transition hover:border-slate-400 active:scale-[0.99]"
+          >
+            <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+            </svg>
+            <span>Masuk dengan Akun Google</span>
+          </button>
+
+          {/* Divider */}
+          <div className="relative flex items-center justify-center pt-1 pb-1">
+            <div className="border-t border-slate-200 w-full" />
+            <span className="bg-white px-3 text-[11px] text-slate-400 uppercase font-medium whitespace-nowrap">
+              atau masuk dengan email
+            </span>
+            <div className="border-t border-slate-200 w-full" />
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
             <FormField label="Email Petugas / Admin BAC" required>
               <div className="relative">
                 <input
@@ -164,23 +212,55 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
 
           {/* Demo Account Helper for Reviewer / Test */}
           <div className="pt-4 border-t border-slate-100 space-y-2">
-            <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-2">
+            <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-amber-900 flex items-center gap-1.5">
                   <KeyRound className="w-3.5 h-3.5 text-amber-700" />
-                  Akun Demo Admin (Siap Pakai):
+                  Pilihan Akun Login (Siap Pakai):
                 </span>
+              </div>
+
+              {/* Option 1: User Email */}
+              <div className="flex items-center justify-between gap-2 p-2 bg-white rounded-xl border border-amber-200/80">
+                <div className="text-[11px] font-mono text-slate-800 truncate">
+                  reyhanz895@gmail.com
+                </div>
                 <button
                   type="button"
-                  onClick={fillDemoCredentials}
-                  className="font-bold text-[11px] text-[#003B73] hover:underline bg-white px-2 py-0.5 rounded border border-amber-200 shadow-2xs"
+                  onClick={() => {
+                    setEmail('reyhanz895@gmail.com');
+                    setPassword(DEMO_ADMIN.password);
+                    setErrorMessage(null);
+                    showToast('Email reyhanz895@gmail.com dipilih!', 'info');
+                  }}
+                  className="font-bold text-[11px] text-[#003B73] hover:underline bg-sky-50 px-2 py-1 rounded border border-sky-200 shrink-0"
                 >
-                  Gunakan Akun Ini
+                  Gunakan Akun
                 </button>
               </div>
-              <div className="text-[11px] font-mono text-slate-700 space-y-0.5">
-                <div>Email: <strong className="text-slate-900">{DEMO_ADMIN.email}</strong></div>
-                <div>Pass : <strong className="text-slate-900">{DEMO_ADMIN.password}</strong></div>
+
+              {/* Option 2: Binus Student / Staff Email */}
+              <div className="flex items-center justify-between gap-2 p-2 bg-white rounded-xl border border-amber-200/80">
+                <div className="text-[11px] font-mono text-slate-800 truncate">
+                  muhammad.laksono002@binus.ac.id
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail('muhammad.laksono002@binus.ac.id');
+                    setPassword(DEMO_ADMIN.password);
+                    setErrorMessage(null);
+                    showToast('Email muhammad.laksono002@binus.ac.id dipilih!', 'info');
+                  }}
+                  className="font-bold text-[11px] text-[#003B73] hover:underline bg-sky-50 px-2 py-1 rounded border border-sky-200 shrink-0"
+                >
+                  Gunakan Akun
+                </button>
+              </div>
+
+              <div className="text-[11px] text-slate-600 pt-1 flex items-center justify-between border-t border-amber-100">
+                <span>Password Bawaan:</span>
+                <span className="font-mono font-bold text-slate-900">{DEMO_ADMIN.password}</span>
               </div>
             </div>
           </div>
@@ -203,8 +283,129 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
             </p>
             <div className="pt-2 flex justify-end">
               <button
+                type="button"
                 onClick={() => setShowForgotPassword(false)}
                 className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Google Account Selection Modal */}
+      {showGoogleModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="max-w-md w-full bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6">
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto shadow-xs">
+                <svg className="w-6 h-6" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">
+                Pilih Akun Google
+              </h3>
+              <p className="text-xs text-slate-500">
+                Lanjutkan ke <strong>BINUS Anti-Bullying Center</strong>
+              </p>
+            </div>
+
+            <div className="space-y-2.5">
+              {/* Account 1 */}
+              <button
+                type="button"
+                onClick={() => handleGoogleSignIn('reyhanz895@gmail.com')}
+                className="w-full flex items-center gap-3.5 p-3 rounded-2xl border border-slate-200 hover:border-[#003B73] hover:bg-sky-50/50 transition group text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-blue-600 text-white font-bold text-sm flex items-center justify-center shrink-0">
+                  R
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-slate-900 text-xs sm:text-sm group-hover:text-[#003B73] truncate">
+                    Muhammad Laksono
+                  </p>
+                  <p className="text-xs text-slate-500 truncate">reyhanz895@gmail.com</p>
+                </div>
+                <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full shrink-0">
+                  Pribadi
+                </span>
+              </button>
+
+              {/* Account 2 */}
+              <button
+                type="button"
+                onClick={() => handleGoogleSignIn('muhammad.laksono002@binus.ac.id')}
+                className="w-full flex items-center gap-3.5 p-3 rounded-2xl border border-slate-200 hover:border-[#003B73] hover:bg-sky-50/50 transition group text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-[#003B73] text-white font-bold text-sm flex items-center justify-center shrink-0">
+                  M
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-slate-900 text-xs sm:text-sm group-hover:text-[#003B73] truncate">
+                    Muhammad Laksono
+                  </p>
+                  <p className="text-xs text-slate-500 truncate">muhammad.laksono002@binus.ac.id</p>
+                </div>
+                <span className="text-[10px] font-semibold text-[#003B73] bg-sky-50 px-2 py-0.5 rounded-full border border-sky-100 shrink-0">
+                  BINUS
+                </span>
+              </button>
+
+              {/* Custom Google Account Option */}
+              {showCustomGoogleInput ? (
+                <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50 space-y-2">
+                  <input
+                    type="email"
+                    placeholder="nama@gmail.com atau nama@binus.ac.id"
+                    value={customGoogleEmail}
+                    onChange={(e) => setCustomGoogleEmail(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#003B73]"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomGoogleInput(false)}
+                      className="px-3 py-1 rounded-lg text-xs text-slate-600 hover:bg-slate-200"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!customGoogleEmail.trim()}
+                      onClick={() => handleGoogleSignIn(customGoogleEmail.trim())}
+                      className="px-4 py-1 rounded-lg text-xs font-bold text-white bg-[#003B73] hover:bg-[#00254A] disabled:opacity-50"
+                    >
+                      Lanjutkan
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowCustomGoogleInput(true)}
+                  className="w-full py-2.5 px-3 text-left text-xs font-semibold text-slate-600 hover:text-[#003B73] hover:bg-slate-50 rounded-xl transition flex items-center gap-2"
+                >
+                  <span>+ Gunakan akun Google lainnya</span>
+                </button>
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+              <span className="text-[11px] text-slate-400">
+                Aman & terverifikasi oleh Google OAuth
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowGoogleModal(false);
+                  setShowCustomGoogleInput(false);
+                }}
+                className="px-3 py-1 rounded-lg font-semibold text-slate-600 hover:bg-slate-100"
               >
                 Tutup
               </button>

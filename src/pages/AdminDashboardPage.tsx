@@ -14,6 +14,7 @@ import {
   Layers,
   ArrowUpDown,
   Lock,
+  KeyRound,
 } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
 import { useToast } from '../components/Toast';
@@ -21,6 +22,8 @@ import {
   getAdminReports,
   getActiveCounselors,
   testPublicSelectReports,
+  updateAdminPassword,
+  getAdminPassword,
   type AuthUser,
 } from '../lib/supabase';
 import type { Report, Counselor, ReportStatus } from '../types/database';
@@ -52,6 +55,12 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   // RLS test modal state
   const [rlsResult, setRlsResult] = useState<{ allowed: boolean; error: string } | null>(null);
   const [showRlsModal, setShowRlsModal] = useState(false);
+
+  // Change Password state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -119,6 +128,24 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     setShowRlsModal(true);
   };
 
+  const handleSavePassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 6) {
+      setPasswordError('Kata sandi minimal harus 6 karakter.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Konfirmasi kata sandi tidak cocok.');
+      return;
+    }
+    updateAdminPassword(newPassword);
+    showToast('Kata sandi admin berhasil diperbarui!', 'success');
+    setShowPasswordModal(false);
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordError(null);
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       {/* Header & Title */}
@@ -132,17 +159,31 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={() => {
+              setNewPassword('');
+              setConfirmPassword('');
+              setPasswordError(null);
+              setShowPasswordModal(true);
+            }}
+            className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-900 flex items-center gap-1.5 transition border border-amber-200"
+            title="Ubah kata sandi login admin"
+          >
+            <KeyRound className="w-3.5 h-3.5 text-[#F58220]" />
+            <span>Ubah Kata Sandi</span>
+          </button>
+
           <button
             onClick={handleTestRls}
-            className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1.5 transition border border-slate-200"
+            className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1.5 transition border border-slate-200"
             title="Uji coba Row Level Security"
           >
             <Lock className="w-3.5 h-3.5 text-[#003B73]" />
             <span>Uji Keamanan RLS</span>
           </button>
 
-          <div className="px-4 py-2 rounded-xl bg-sky-50 border border-sky-200 text-xs text-[#003B73] font-semibold flex items-center gap-2">
+          <div className="px-3.5 py-2 rounded-xl bg-sky-50 border border-sky-200 text-xs text-[#003B73] font-semibold flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
             <span>Petugas: {currentUser.name}</span>
           </div>
@@ -438,6 +479,80 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 Tutup
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Change Password Dialog */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="max-w-md w-full bg-white rounded-2xl p-6 shadow-2xl space-y-4 border border-slate-200">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-[#F58220] flex items-center justify-center shrink-0">
+                <KeyRound className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-base">Ubah Kata Sandi Admin BAC</h3>
+                <p className="text-xs text-slate-500">Perbarui kata sandi untuk akun {currentUser.email}</p>
+              </div>
+            </div>
+
+            {passwordError && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{passwordError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSavePassword} className="space-y-4 pt-2">
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Kata Sandi Baru:
+                </label>
+                <input
+                  type="password"
+                  placeholder="Minimal 6 karakter"
+                  value={newPassword}
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    if (passwordError) setPasswordError(null);
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#003B73]"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Konfirmasi Kata Sandi Baru:
+                </label>
+                <input
+                  type="password"
+                  placeholder="Ulangi kata sandi baru"
+                  value={confirmPassword}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    if (passwordError) setPasswordError(null);
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#003B73]"
+                />
+              </div>
+
+              <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-[#003B73] hover:bg-[#00254A]"
+                >
+                  Simpan Kata Sandi
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

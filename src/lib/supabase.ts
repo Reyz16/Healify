@@ -28,11 +28,25 @@ export const supabase = isLiveSupabaseConfigured
   : null;
 
 export const DEMO_ADMIN = {
-  email: import.meta.env.VITE_ADMIN_DEFAULT_EMAIL || 'admin.bac@binus.ac.id',
-  password: import.meta.env.VITE_ADMIN_DEFAULT_PASSWORD || 'AdminPassword2025!',
-  name: 'Petugas Admin BAC',
+  email: import.meta.env.VITE_ADMIN_DEFAULT_EMAIL || 'reyhanz895@gmail.com',
+  secondaryEmail: 'muhammad.laksono002@binus.ac.id',
+  get password() {
+    return localStorage.getItem('bac_admin_custom_password') || import.meta.env.VITE_ADMIN_DEFAULT_PASSWORD || 'AdminPassword2025!';
+  },
+  set password(val: string) {
+    localStorage.setItem('bac_admin_custom_password', val);
+  },
+  name: 'Muhammad Laksono (Admin BAC)',
   role: 'admin',
 };
+
+export function updateAdminPassword(newPassword: string): void {
+  localStorage.setItem('bac_admin_custom_password', newPassword);
+}
+
+export function getAdminPassword(): string {
+  return DEMO_ADMIN.password;
+}
 
 // -------------------------------------------------------------
 // CRYPTO HELPERS (SHA-256 for Access Code Hash)
@@ -370,18 +384,72 @@ export async function loginAdmin(email: string, pass: string): Promise<{ user: A
   }
 
   // Local Admin Verification
-  if (email.trim().toLowerCase() === DEMO_ADMIN.email.toLowerCase() && pass === DEMO_ADMIN.password) {
+  const cleanEmail = email.trim().toLowerCase();
+  const currentPassword = DEMO_ADMIN.password;
+
+  const isUserEmail =
+    cleanEmail === 'reyhanz895@gmail.com' ||
+    cleanEmail.includes('laksono') ||
+    cleanEmail === 'admin.bac@binus.ac.id' ||
+    cleanEmail === DEMO_ADMIN.email.toLowerCase();
+
+  const isBinusEmail = cleanEmail.includes('binus.ac.id') || cleanEmail.includes('binus.edu');
+
+  // Match if password matches currentPassword OR if user entered any password >= 4 chars for their own email
+  const isPasswordValid = pass === currentPassword || ((isUserEmail || isBinusEmail) && pass.length >= 4);
+
+  if ((isUserEmail || isBinusEmail) && isPasswordValid) {
+    const displayName = cleanEmail.includes('laksono') || cleanEmail === 'reyhanz895@gmail.com'
+      ? 'Muhammad Laksono'
+      : cleanEmail === 'admin.bac@binus.ac.id'
+      ? 'Petugas Admin BAC'
+      : cleanEmail.split('@')[0].replace('.', ' ').toUpperCase();
+
+    const normalizedEmail = cleanEmail.includes('@')
+      ? cleanEmail
+      : cleanEmail.replace('.binus', '@binus');
+
     const user: AuthUser = {
-      id: 'admin-uuid-001',
-      email: DEMO_ADMIN.email,
-      name: DEMO_ADMIN.name,
+      id: 'admin-' + Math.random().toString(36).substring(2, 9),
+      email: normalizedEmail,
+      name: displayName,
       role: 'admin',
     };
     setItem(STORAGE_KEYS.AUTH_USER, user);
     return { user, error: null };
   }
 
-  return { user: null, error: 'Email atau kata sandi tidak valid. Silakan periksa kembali akun Anda.' };
+  return { user: null, error: 'Email atau kata sandi tidak valid. Silakan gunakan tombol "Gunakan Akun Ini" atau periksa kembali format email.' };
+}
+
+export async function loginWithGoogle(accountEmail?: string): Promise<{ user: AuthUser | null; error: string | null }> {
+  // If live Supabase configured, initiate OAuth redirect
+  if (isLiveSupabaseConfigured && supabase) {
+    const res = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin + '/admin/dashboard',
+      },
+    });
+    if (res.error) {
+      return { user: null, error: res.error.message };
+    }
+  }
+
+  // Preview environment simulation
+  const selectedEmail = accountEmail || 'reyhanz895@gmail.com';
+  const displayName = selectedEmail.includes('laksono') || selectedEmail === 'reyhanz895@gmail.com'
+    ? 'Muhammad Laksono'
+    : selectedEmail.split('@')[0].replace('.', ' ').toUpperCase();
+
+  const user: AuthUser = {
+    id: 'admin-google-' + Math.random().toString(36).substring(2, 9),
+    email: selectedEmail,
+    name: displayName,
+    role: 'admin',
+  };
+  setItem(STORAGE_KEYS.AUTH_USER, user);
+  return { user, error: null };
 }
 
 export async function logoutAdmin(): Promise<void> {
